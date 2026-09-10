@@ -1,0 +1,15 @@
+# data, caches and trained runs are not part of the repository
+cache/
+cache_unseg/
+labels/
+runs/
+checkpoints/
+E-DAIC/
+Patient_data/
+Patient_data_fixed/
+EDAIC_transcripts_fixed/
+__pycache__/
+*.npz
+*.pt
+*.npy
+.ipynb_checkpoints/
