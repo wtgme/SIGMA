@@ -1,4 +1,4 @@
-# SIGMA: speaker-isolated, symptom-structured estimation of depression severity from clinical interviews
+# SIGMA: speaker-isolated, symptom-structured multimodal estimation of depression severity from clinical interviews
 
 Code for SIGMA (Speaker-Isolated Graded-response Multimodal Architecture), which estimates PHQ-8 depression severity from
 E-DAIC interviews at the item level. This repository holds the model, training, evaluation and preprocessing code only, starting from the original E-DAIC
