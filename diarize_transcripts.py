@@ -24,8 +24,11 @@ import argparse, glob, os
 import numpy as np, pandas as pd
 
 def diarize(wav_path, pipeline):
-    """-> DataFrame(start, end, speaker) of the pipeline's speaker turns."""
-    out = pipeline(wav_path)
+    """-> DataFrame(start, end, speaker) of the pipeline's speaker turns. The waveform is read with torchaudio and handed to
+    the pipeline as {"waveform", "sample_rate"}, which avoids the AudioDecoder error of some pyannote/torchcodec combinations."""
+    import torchaudio
+    waveform, sample_rate = torchaudio.load(wav_path)
+    out = pipeline({'waveform': waveform, 'sample_rate': sample_rate})
     ann = getattr(out, 'speaker_diarization', out)          # pyannote.audio >= 4 returns a DiarizeOutput, 3.x an Annotation
     rows = [(seg.start, seg.end, spk) for seg, _, spk in ann.itertracks(yield_label=True)]
     return pd.DataFrame(rows, columns=['start', 'end', 'speaker'])
@@ -66,19 +69,26 @@ if __name__ == '__main__':
     args = ap.parse_args()
     pids = [p for p in args.pids.split(',') if p] or sorted(os.path.basename(d)[:-2] for d in glob.glob(os.path.join(args.edaic, '*_P')))
     pipeline = None
-    for k, pid in enumerate(pids):
-        src, dst = os.path.join(args.edaic, f'{pid}_P'), os.path.join(args.out, f'{pid}_P'); os.makedirs(dst, exist_ok=True)
-        turns_path = os.path.join(dst, f'{pid}_diarization.csv')
-        if os.path.exists(turns_path): turns = pd.read_csv(turns_path)
-        else:
-            if pipeline is None:
-                import torch
-                from pyannote.audio import Pipeline
-                try: pipeline = Pipeline.from_pretrained(args.model, token=args.token or None)
-                except TypeError: pipeline = Pipeline.from_pretrained(args.model, use_auth_token=args.token or None)   # pyannote.audio 3.x
-                if args.device == 'cuda' and torch.cuda.is_available(): pipeline.to(torch.device('cuda'))
-            turns = diarize(os.path.join(src, f'{pid}_AUDIO.wav'), pipeline); turns.to_csv(turns_path, index=False)
-        tr = pd.read_csv(os.path.join(src, f'{pid}_Transcript.csv'))
-        kept, spk = participant_transcript(tr, turns, args.rule); kept.to_csv(os.path.join(dst, f'{pid}_Transcript.csv'), index=False)
-        print(f'{pid}: {len(turns.speaker.unique())} speakers, participant = {spk}, {len(kept)}/{len(tr)} transcript rows kept', flush=True)
+    for pid in pids:
+        try:
+            src, dst = os.path.join(args.edaic, f'{pid}_P'), os.path.join(args.out, f'{pid}_P'); os.makedirs(dst, exist_ok=True)
+            turns_path = os.path.join(dst, f'{pid}_diarization.csv')
+            if os.path.exists(turns_path): turns = pd.read_csv(turns_path)
+            else:
+                if pipeline is None:
+                    import torch
+                    from pyannote.audio import Pipeline
+                    try: pipeline = Pipeline.from_pretrained(args.model, token=args.token or None)
+                    except TypeError: pipeline = Pipeline.from_pretrained(args.model, use_auth_token=args.token or None)   # pyannote.audio 3.x
+                    if args.device == 'cuda' and torch.cuda.is_available(): pipeline.to(torch.device('cuda'))
+                turns = diarize(os.path.join(src, f'{pid}_AUDIO.wav'), pipeline); turns.to_csv(turns_path, index=False)
+            if turns.empty: print(f'{pid}: no speaker turns, skipped', flush=True); continue
+            tr = pd.read_csv(os.path.join(src, f'{pid}_Transcript.csv'))
+            if 'Confidence' not in tr.columns: tr['Confidence'] = 0.0
+            kept, spk = participant_transcript(tr, turns, args.rule)
+            if kept.empty: print(f'{pid}: no participant rows, skipped', flush=True); continue
+            kept.to_csv(os.path.join(dst, f'{pid}_Transcript.csv'), index=False)
+            print(f'{pid}: {len(turns.speaker.unique())} speakers, participant = {spk}, {len(kept)}/{len(tr)} transcript rows kept', flush=True)
+        except Exception as e:
+            print(f'{pid}: failed ({type(e).__name__}: {e})', flush=True)
     print('DIARIZATION_DONE', len(pids), 'sessions')

@@ -9,3 +9,4 @@ soundfile
 librosa
 # speaker diarization only (diarize_transcripts.py); https://github.com/pyannote/pyannote-audio
 pyannote.audio
+torchaudio
