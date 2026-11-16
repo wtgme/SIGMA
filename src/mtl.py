@@ -1,5 +1,5 @@
-"""SIGMA: model, training and evaluation. Relative --cache / --labels paths are resolved against the repository root:
-data/cache/<feature>/<pid>.npy, data/E-DAIC/labels/. Run from the repository root.
+"""SIGMA: model, training and evaluation. Inputs default to <repo>/data/cache/<feature>/<pid>.npy and <repo>/data/E-DAIC/labels/;
+paths given on the command line are relative to the current directory.
 One script for every modality subset: unimodal runs give the pretrained trunks, multimodal runs load them.
 
 python src/mtl.py --mods TAV --seed 42 --out runs/<cond>/TAV_seed42 --train [--init_dir runs/<cond>] [--freeze_txt] [flags]
@@ -19,11 +19,12 @@ import argparse, json, os, random, time
 import numpy as np, pandas as pd, torch, torch.nn as nn, torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # the repository root: data/cache/, data/E-DAIC/labels/, runs/
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # the repository root; data/ holds the inputs
 ap = argparse.ArgumentParser()
 ap.add_argument('--mods', required=True, help='T, A, V, TA, TV, AV or TAV')
 ap.add_argument('--txt_feat', default='bge'); ap.add_argument('--aud_feat', default='egemaps23'); ap.add_argument('--vid_feat', default='openface49')
-ap.add_argument('--cache', default='data/cache'); ap.add_argument('--labels', default='data/E-DAIC/labels', help='folder with detailed_lables.csv and {train,dev,test}_split.csv (the E-DAIC labels/ folder)')
+ap.add_argument('--cache', default=os.path.join(ROOT, 'data', 'cache'), help='feature cache: <cache>/<feature>/<pid>.npy')
+ap.add_argument('--labels', default=os.path.join(ROOT, 'data', 'E-DAIC', 'labels'), help='folder with detailed_lables.csv and {train,dev,test}_split.csv (the E-DAIC labels/ folder)')
 ap.add_argument('--seed', type=int, default=42); ap.add_argument('--out', required=True); ap.add_argument('--train', action='store_true')
 ap.add_argument('--alpha', type=float, default=1.0, help='ordinal-distance exponent of W-ImbOLL'); ap.add_argument('--beta', type=float, default=0.5, help='class-weight exponent of W-ImbOLL')
 ap.add_argument('--enc_hidden', type=int, default=50, help='BiLSTM units per direction'); ap.add_argument('--dropout', type=float, default=0.5, help='attention dropout')
@@ -44,8 +45,8 @@ ap.add_argument('--rules', default='loss', help='checkpoint rules to save and ev
 args = ap.parse_args()
 MODS = [{'T': 'txt', 'A': 'aud', 'V': 'vid'}[c] for c in args.mods]; UNI = len(MODS) == 1
 if args.batch is None: args.batch = 10 if UNI else 8
-for a in ('cache', 'labels'):
-    if not os.path.isabs(getattr(args, a)): setattr(args, a, os.path.join(ROOT, getattr(args, a)))
+for a in ('cache', 'labels', 'out', 'init_dir'):   # absolute paths in metrics.json
+    if getattr(args, a): setattr(args, a, os.path.abspath(getattr(args, a)))
 FEAT = {'txt': args.txt_feat, 'aud': args.aud_feat, 'vid': args.vid_feat}
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 EPS = 1e-12; T = args.max_len; REP = args.head_rep; RULES = args.rules.split(','); FOCUS = args.single_item - 1

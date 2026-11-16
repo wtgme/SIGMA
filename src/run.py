@@ -2,7 +2,8 @@
 unimodal runs (T, A, V as needed), then the multimodal runs initialised from them (text frozen).
 Finished runs (metrics.json present) are skipped.
 
-python src/run.py --cond NAME --txt mpnet --aud wavlm768 --vid resnet2048 [--mods TA,TV,TAV] [--flags "--aug_crop 0.7"] [--seeds 42,43,44,45,46]
+python src/run.py --cond NAME [--txt bge] [--aud egemaps23] [--vid openface49] [--mods TA,TV,TAV] [--flags=--no_cross_modal] [--seeds 42,43,44,45,46]
+         [--cache data/cache] [--common "--alpha 1.5"]
 """
 import argparse, os, subprocess, threading, time
 import sys; ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); PY = sys.executable
@@ -13,8 +14,8 @@ ap.add_argument('--mods', default='T,A,V,TA,TV,TAV'); ap.add_argument('--flags',
 ap.add_argument('--seeds', default='42,43,44,45,46'); ap.add_argument('--per_gpu', type=int, default=6); ap.add_argument('--gpus', default='0,1'); ap.add_argument('--dry_run', action='store_true')
 ap.add_argument('--no_freeze', action='store_true')
 ap.add_argument('--single_items', action='store_true', help='train 8 single-item models per (mods, seed) instead of one multi-task model')
-ap.add_argument('--common', default='', help='flags appended to every mtl.py command (unimodal and multimodal)'); ap.add_argument('--cache', default='data/cache'); ap.add_argument('--init_cond', default='', help='take the unimodal trunks from this condition instead of the current one')
-args = ap.parse_args()
+ap.add_argument('--common', default='', help='flags appended to every mtl.py command (unimodal and multimodal)'); ap.add_argument('--cache', default=os.path.join(ROOT, 'data', 'cache'), help='feature cache (relative paths: to the current directory)'); ap.add_argument('--init_cond', default='', help='take the unimodal trunks from this condition instead of the current one')
+args = ap.parse_args(); args.cache = os.path.abspath(args.cache)   # the runs are started with cwd = repository root
 OUT = os.path.join(ROOT, 'runs', args.cond); os.makedirs(OUT, exist_ok=True)
 SEEDS = [int(s) for s in args.seeds.split(',')]; MODS = args.mods.split(','); GPUS = [int(g) for g in args.gpus.split(',')]
 FEATS = ['--txt_feat', args.txt, '--aud_feat', args.aud, '--vid_feat', args.vid, '--cache', args.cache] + args.common.split()

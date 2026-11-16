@@ -1,22 +1,26 @@
 """Inference with a trained SIGMA run.
 
-python src/predict.py --ckpt runs/grm_full/TAV_seed42 --pids 300,301,302 [--cache data/cache] [--out predictions.csv]
+python src/predict.py --ckpt runs/grm_full/TAV_seed42 --pids 300,301,302 [--cache data/cache] [--labels data/E-DAIC/labels] [--out predictions.csv]
 python src/predict.py --ckpt runs/grm_full/T_seed42 --split test                 # all participants of a label split
 
 Reads the run's metrics.json for the model configuration, loads best_loss.pt, and writes one row per participant:
 expected score per PHQ-8 item, the expected total (headline decoding), the argmax total, and the latent trait theta.
-Features must exist in the cache for every participant (see preprocessing/build_cache.py).
+Features must exist in the cache for every participant (see preprocessing/build_cache.py). The cache and label folders are, in
+order: --cache / --labels, the folders recorded in the run's metrics.json if they exist (same machine), <repo>/data/cache and
+<repo>/data/E-DAIC/labels (a run trained elsewhere). The labels folder is always read (split lists and the label column).
 """
 import argparse, json, os, sys, runpy
 import numpy as np, pandas as pd, torch, torch.nn.functional as F
 ap = argparse.ArgumentParser()
 ap.add_argument('--ckpt', required=True, help='run folder holding metrics.json and best_loss.pt')
 ap.add_argument('--pids', default='', help='comma-separated participant ids'); ap.add_argument('--split', default='', choices=['', 'train', 'dev', 'test'])
-ap.add_argument('--cache', default=''); ap.add_argument('--out', default='predictions.csv')
+ap.add_argument('--cache', default=''); ap.add_argument('--labels', default=''); ap.add_argument('--out', default='predictions.csv')
 a = ap.parse_args()
-HERE = os.path.dirname(os.path.abspath(__file__)); cfg = json.load(open(os.path.join(a.ckpt, 'metrics.json')))['args']
+HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); cfg = json.load(open(os.path.join(a.ckpt, 'metrics.json')))['args']
+def folder(given, recorded, default): return os.path.abspath(given) if given else recorded if recorded and os.path.isdir(recorded) else default
+cache = folder(a.cache, cfg.get('cache'), os.path.join(ROOT, 'data', 'cache')); labels = folder(a.labels, cfg.get('labels'), os.path.join(ROOT, 'data', 'E-DAIC', 'labels'))
 # rebuild the model definition with the run's own switches (mtl.py is a script; execute it up to its training section)
-flags = ['--mods', cfg['mods'], '--out', a.ckpt, '--cache', a.cache or cfg['cache'], '--labels', cfg['labels']]
+flags = ['--mods', cfg['mods'], '--out', a.ckpt, '--cache', cache, '--labels', labels]
 for k in ['txt_feat', 'aud_feat', 'vid_feat', 'enc_hidden', 'dropout', 'max_len', 'head_rep', 'norm_vid', 'head', 'grm_factors', 'single_item']:
     if k in cfg: flags += [f'--{k}', str(cfg[k])]
 if cfg.get('no_cross_modal'): flags.append('--no_cross_modal')

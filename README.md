@@ -27,7 +27,8 @@ SIGMA/
 └── requirements.txt             # package versions used for the paper
 ```
 
-Run the Python commands below from the repository root; the shell scripts can be started from any directory.
+All scripts default to the folders under `data/` and `runs/` of the repository, wherever they are started from; paths given
+on the command line are relative to the current directory. The commands below are written for the repository root.
 
 ## Pipeline
 
