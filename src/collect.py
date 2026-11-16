@@ -1,8 +1,8 @@
 """Collect runs/<cond>/<mods>_seed<s>/metrics.json into per-seed and mean +- s.d. tables, plus
-five-seed ensembles from the saved probabilities. Usage: python collect.py [cond ...]"""
+five-seed ensembles from the saved probabilities. Usage: python src/collect.py [cond ...]"""
 import glob, json, os, sys
 import numpy as np, pandas as pd
-ROOT = os.path.dirname(os.path.abspath(__file__)); RUNS = os.path.join(ROOT, 'runs')
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); RUNS = os.path.join(ROOT, 'runs')
 conds = sys.argv[1:] or sorted(os.listdir(RUNS))
 def ccc(p, l): p, l = np.asarray(p, float), np.asarray(l, float); return 2 * np.cov(p, l, bias=True)[0, 1] / (p.var() + l.var() + (p.mean() - l.mean()) ** 2)
 rows, ens = [], []

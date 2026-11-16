@@ -14,7 +14,7 @@ Text, Confidence):
      (Speaker = "patient"), the format read by fix_transcripts.py and build_cache.py. Rows that overlap no diarized speech
      are dropped.
 
-Usage: python diarize_transcripts.py --edaic E-DAIC/data --out Patient_data [--model pyannote/speaker-diarization-community-1]
+Usage: python preprocessing/diarize_transcripts.py --edaic data/E-DAIC/data --out data/Patient_data [--model pyannote/speaker-diarization-community-1]
        [--token HF_TOKEN] [--pids 300,301] [--device cuda] [--rule overlap|any]
 The pyannote pipeline needs pyannote.audio (https://github.com/pyannote/pyannote-audio) and a Hugging Face token for which the
 model's conditions have been accepted (pass --token or set HF_TOKEN). If <pid>_diarization.csv already exists the model is
@@ -22,6 +22,7 @@ not run for that session.
 """
 import argparse, glob, os
 import numpy as np, pandas as pd
+DATA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')   # <repo>/data, the default for every path
 
 def diarize(wav_path, pipeline):
     """-> DataFrame(start, end, speaker) of the pipeline's speaker turns. The waveform is read with torchaudio and handed to
@@ -62,8 +63,8 @@ def participant_transcript(transcript, turns, rule='overlap'):
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument('--edaic', default='E-DAIC/data', help='folder holding <pid>_P/<pid>_AUDIO.wav and <pid>_P/<pid>_Transcript.csv')
-    ap.add_argument('--out', default='Patient_data'); ap.add_argument('--model', default='pyannote/speaker-diarization-community-1')
+    ap.add_argument('--edaic', default=os.path.join(DATA, 'E-DAIC', 'data'), help='folder holding <pid>_P/<pid>_AUDIO.wav and <pid>_P/<pid>_Transcript.csv')
+    ap.add_argument('--out', default=os.path.join(DATA, 'Patient_data')); ap.add_argument('--model', default='pyannote/speaker-diarization-community-1')
     ap.add_argument('--token', default=os.environ.get('HF_TOKEN', '')); ap.add_argument('--pids', default='', help='comma-separated subset')
     ap.add_argument('--device', default='cuda'); ap.add_argument('--rule', default='overlap', choices=['overlap', 'any'], help='row assignment: largest overlap, or any overlap with the participant')
     args = ap.parse_args()

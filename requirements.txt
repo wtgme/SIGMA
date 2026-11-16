@@ -3,10 +3,10 @@ torch==2.7.1
 numpy==1.26.4
 pandas==2.3.3
 scipy==1.15.3
-# feature extraction only (build_cache.py)
+# feature extraction only (preprocessing/build_cache.py)
 transformers==4.37.2
 soundfile
 librosa
-# speaker diarization only (diarize_transcripts.py); https://github.com/pyannote/pyannote-audio
+# speaker diarization only (preprocessing/diarize_transcripts.py); https://github.com/pyannote/pyannote-audio
 pyannote.audio
 torchaudio

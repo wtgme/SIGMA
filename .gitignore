@@ -1,15 +1,19 @@
-# data, caches and trained runs are not part of the repository
-cache/
-cache_unseg/
-labels/
-runs/
-checkpoints/
-E-DAIC/
-Patient_data/
-Patient_data_fixed/
-EDAIC_transcripts_fixed/
+# data, caches and trained runs are not part of the repository (data/README.md describes the expected layout)
+/data/*
+!/data/README.md
+/runs
+/checkpoints
+predictions*.csv
 __pycache__/
 *.npz
 *.pt
 *.npy
 .ipynb_checkpoints/
+# data folders placed at the top level by mistake (E-DAIC is licensed: never commit it)
+/E-DAIC
+/labels
+/cache
+/cache_unseg
+/Patient_data
+/Patient_data_fixed
+/EDAIC_transcripts_fixed

@@ -1,20 +1,22 @@
 """Per-sentence feature cache for the final model. One .npy per participant and feature set,
-shape (n_sentences, dim), sentences from the repaired diarized transcripts (Patient_data_fixed).
+shape (n_sentences, dim), sentences from the repaired diarized transcripts (data/Patient_data_fixed).
 
 Text   : distilroberta (as in the original code), mpnet, bge, e5   -> sentence embeddings, L2-normalised
 Audio  : egemaps23 (as in the original code), mfcc78 (mean+std of 39 MFCC/deltas), wavlm768 (WavLM-base-plus, mean of last layer)
 Video  : openface49 (as in the original code), resnet2048, densenet1920 (E-DAIC CNN features, mean per sentence)
 Windows follow the original code: frame index = int(time x fps), fps = n_frames / audio duration for video,
 100 Hz for openSMILE; invalid windows give a zero vector.
-Usage: python build_cache.py --feats bge,egemaps23,openface49 [--t_path Patient_data_fixed/] [--edaic E-DAIC/data] [--out cache] [--limit N]
+Usage: python preprocessing/build_cache.py --feats bge,egemaps23,openface49 [--t_path data/Patient_data_fixed] [--edaic data/E-DAIC/data]
+       [--out data/cache] [--limit N]
 """
 import argparse, glob, json, os, time
 import numpy as np, pandas as pd, torch, torch.nn.functional as F, soundfile as sf
+DATA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')   # <repo>/data, the default for every path
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--feats', required=True)
-ap.add_argument('--t_path', default='Patient_data_fixed/')
-ap.add_argument('--out', default='cache'); ap.add_argument('--edaic', default='E-DAIC/data', help='E-DAIC data folder holding <pid>_P/<pid>_AUDIO.wav and <pid>_P/features/')
+ap.add_argument('--t_path', default=os.path.join(DATA, 'Patient_data_fixed'))
+ap.add_argument('--out', default=os.path.join(DATA, 'cache')); ap.add_argument('--edaic', default=os.path.join(DATA, 'E-DAIC', 'data'), help='E-DAIC data folder holding <pid>_P/<pid>_AUDIO.wav and <pid>_P/features/')
 ap.add_argument('--limit', type=int, default=0)
 args = ap.parse_args()
 FEATS = args.feats.split(',')

@@ -1,11 +1,11 @@
-"""Inference with a trained CTMTL v3 checkpoint.
+"""Inference with a trained SIGMA run.
 
-python predict.py --ckpt checkpoints/TAV_seed42 --pids 300,301,302 [--cache cache] [--out predictions.csv]
-python predict.py --ckpt checkpoints/T_seed42 --split test                 # all participants of a label split
+python src/predict.py --ckpt runs/grm_full/TAV_seed42 --pids 300,301,302 [--cache data/cache] [--out predictions.csv]
+python src/predict.py --ckpt runs/grm_full/T_seed42 --split test                 # all participants of a label split
 
 Reads the run's metrics.json for the model configuration, loads best_loss.pt, and writes one row per participant:
 expected score per PHQ-8 item, the expected total (headline decoding), the argmax total, and the latent trait theta.
-Features must exist in the cache for every participant (see build_cache.py).
+Features must exist in the cache for every participant (see preprocessing/build_cache.py).
 """
 import argparse, json, os, sys, runpy
 import numpy as np, pandas as pd, torch, torch.nn.functional as F

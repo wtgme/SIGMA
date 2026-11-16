@@ -4,11 +4,12 @@ diarized Patient_data transcripts inherit this in the 73 sessions where that las
 participant's. The true start is not recorded anywhere, so it is estimated from the utterance
 length: start = max(previous end, end - max(1 s, 0.45 s x words)).
 Writes <out>/<id>_P/<id>_Transcript.csv; nothing under <src> is modified.
-Usage: python fix_transcripts.py [--src Patient_data] [--out Patient_data_fixed]   (also used on the original transcripts for the no-segmentation ablation)"""
+Usage: python preprocessing/fix_transcripts.py [--src data/Patient_data] [--out data/Patient_data_fixed]   (also used on the original transcripts for the no-segmentation ablation)"""
 import argparse, glob, os
 import numpy as np, pandas as pd
+DATA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')   # <repo>/data, the default for every path
 
-ap = argparse.ArgumentParser(); ap.add_argument('--src', default='Patient_data'); ap.add_argument('--out', default='Patient_data_fixed'); args = ap.parse_args()
+ap = argparse.ArgumentParser(); ap.add_argument('--src', default=os.path.join(DATA, 'Patient_data')); ap.add_argument('--out', default=os.path.join(DATA, 'Patient_data_fixed')); args = ap.parse_args()
 n_fix = n_rows = 0
 for p in sorted(glob.glob(f'{args.src}/*_P')):
     pid = os.path.basename(p)[:-2]

@@ -1,7 +1,8 @@
-"""SIGMA: model, training and evaluation. Paths are relative to this folder: cache/<feature>/<pid>.npy, labels/, runs/.
+"""SIGMA: model, training and evaluation. Relative --cache / --labels paths are resolved against the repository root:
+data/cache/<feature>/<pid>.npy, data/E-DAIC/labels/. Run from the repository root.
 One script for every modality subset: unimodal runs give the pretrained trunks, multimodal runs load them.
 
-python mtl.py --mods TAV --seed 42 --out runs/<cond>/TAV_seed42 --train [--init_dir runs/<cond>] [--freeze_txt] [flags]
+python src/mtl.py --mods TAV --seed 42 --out runs/<cond>/TAV_seed42 --train [--init_dir runs/<cond>] [--freeze_txt] [flags]
 
 Model: participant-only sentence features, padded to the longest interview and packed (--max_len); per-modality BiLSTM +
 self-attention trunks with masked mean pooling; pairwise cross-attention fusion over all ordered modality pairs for the multimodal runs; a graded-response head
@@ -10,19 +11,19 @@ discrimination and three ordered thresholds, and the total score is the sum of t
 item with class weights and learned task weights; checkpoint: lowest validation loss. metrics.json holds per-item metrics for
 dev and test, the selected epoch, the item parameters and attention / modality-shuffle diagnostics.
 
-Ablation switches (run_ablation.sh): --no_cross_modal (keys and values from the query modality: same depth and parameters, no
+Ablation switches (scripts/run_ablation.sh): --no_cross_modal (keys and values from the query modality: same depth and parameters, no
 cross-modal information flow), --head items (eight independent item heads instead of the graded-response head), --single_item i
-(one item per model), --cache cache_unseg (original transcripts). --cv_fold k runs k-fold cross-validation over all participants.
+(one item per model), --cache data/cache_unseg (original transcripts). --cv_fold k runs k-fold cross-validation over all participants.
 """
 import argparse, json, os, random, time
 import numpy as np, pandas as pd, torch, torch.nn as nn, torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
-ROOT = os.path.dirname(os.path.abspath(__file__))   # the release folder: cache/, labels/, checkpoints/, runs/
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # the repository root: data/cache/, data/E-DAIC/labels/, runs/
 ap = argparse.ArgumentParser()
 ap.add_argument('--mods', required=True, help='T, A, V, TA, TV, AV or TAV')
 ap.add_argument('--txt_feat', default='bge'); ap.add_argument('--aud_feat', default='egemaps23'); ap.add_argument('--vid_feat', default='openface49')
-ap.add_argument('--cache', default='cache'); ap.add_argument('--labels', default='labels')
+ap.add_argument('--cache', default='data/cache'); ap.add_argument('--labels', default='data/E-DAIC/labels', help='folder with detailed_lables.csv and {train,dev,test}_split.csv (the E-DAIC labels/ folder)')
 ap.add_argument('--seed', type=int, default=42); ap.add_argument('--out', required=True); ap.add_argument('--train', action='store_true')
 ap.add_argument('--alpha', type=float, default=1.0, help='ordinal-distance exponent of W-ImbOLL'); ap.add_argument('--beta', type=float, default=0.5, help='class-weight exponent of W-ImbOLL')
 ap.add_argument('--enc_hidden', type=int, default=50, help='BiLSTM units per direction'); ap.add_argument('--dropout', type=float, default=0.5, help='attention dropout')

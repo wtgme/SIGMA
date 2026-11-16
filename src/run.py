@@ -1,18 +1,19 @@
-"""Scheduler for mtl.py (release copy; runs in runs/<cond>/). A condition = feature set + flags. For each seed it trains the
+"""Scheduler for src/mtl.py (writes runs/<cond>/ under the repository root). A condition = feature set + flags. For each seed it trains the
 unimodal runs (T, A, V as needed), then the multimodal runs initialised from them (text frozen).
 Finished runs (metrics.json present) are skipped.
 
-python run.py --cond NAME --txt mpnet --aud wavlm768 --vid resnet2048 [--mods TA,TV,TAV] [--flags "--aug_crop 0.7"] [--seeds 42,43,44,45,46]
+python src/run.py --cond NAME --txt mpnet --aud wavlm768 --vid resnet2048 [--mods TA,TV,TAV] [--flags "--aug_crop 0.7"] [--seeds 42,43,44,45,46]
 """
 import argparse, os, subprocess, threading, time
-import sys; ROOT = os.path.dirname(os.path.abspath(__file__)); PY = sys.executable
+import sys; ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); PY = sys.executable
+MTL = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mtl.py')
 ap = argparse.ArgumentParser()
 ap.add_argument('--cond', required=True); ap.add_argument('--txt', default='bge'); ap.add_argument('--aud', default='egemaps23'); ap.add_argument('--vid', default='openface49')
 ap.add_argument('--mods', default='T,A,V,TA,TV,TAV'); ap.add_argument('--flags', default=''); ap.add_argument('--uni_flags', default='')
 ap.add_argument('--seeds', default='42,43,44,45,46'); ap.add_argument('--per_gpu', type=int, default=6); ap.add_argument('--gpus', default='0,1'); ap.add_argument('--dry_run', action='store_true')
 ap.add_argument('--no_freeze', action='store_true')
 ap.add_argument('--single_items', action='store_true', help='train 8 single-item models per (mods, seed) instead of one multi-task model')
-ap.add_argument('--common', default='', help='flags appended to every mtl.py command (unimodal and multimodal)'); ap.add_argument('--cache', default='cache'); ap.add_argument('--init_cond', default='', help='take the unimodal trunks from this condition instead of the current one')
+ap.add_argument('--common', default='', help='flags appended to every mtl.py command (unimodal and multimodal)'); ap.add_argument('--cache', default='data/cache'); ap.add_argument('--init_cond', default='', help='take the unimodal trunks from this condition instead of the current one')
 args = ap.parse_args()
 OUT = os.path.join(ROOT, 'runs', args.cond); os.makedirs(OUT, exist_ok=True)
 SEEDS = [int(s) for s in args.seeds.split(',')]; MODS = args.mods.split(','); GPUS = [int(g) for g in args.gpus.split(',')]
@@ -27,7 +28,7 @@ if True:
             items = range(1, 9) if args.single_items else [0]
             for it in items:
                 tag = f'{m}_item{it}_seed{seed}' if it else f'{m}_seed{seed}'; out = os.path.join(OUT, tag)
-                cmd = [PY, '-u', 'mtl.py', '--mods', m, '--seed', str(seed), '--out', out, '--train'] + FEATS + (['--single_item', str(it)] if it else [])
+                cmd = [PY, '-u', MTL, '--mods', m, '--seed', str(seed), '--out', out, '--train'] + FEATS + (['--single_item', str(it)] if it else [])
                 deps = []
                 if len(m) > 1:
                     cmd += ['--init_dir', INIT] + ([] if args.no_freeze else ['--freeze_txt']) + args.flags.split()
@@ -40,7 +41,7 @@ if True:
         for d in j['deps']:
             if d not in have:
                 m, s_ = d.split('_seed'); out = os.path.join(OUT, d); m, it = (m.split('_item') + [''])[:2]
-                jobs.insert(0, dict(name=d, cmd=[PY, '-u', 'mtl.py', '--mods', m, '--seed', s_, '--out', out, '--train'] + FEATS + (['--single_item', it] if it else []) + args.uni_flags.split() + (args.flags.split() if it else []), deps=[], out=out)); have.add(d)
+                jobs.insert(0, dict(name=d, cmd=[PY, '-u', MTL, '--mods', m, '--seed', s_, '--out', out, '--train'] + FEATS + (['--single_item', it] if it else []) + args.uni_flags.split() + (args.flags.split() if it else []), deps=[], out=out)); have.add(d)
 def finished(name): return os.path.exists(os.path.join(OUT, name, 'metrics.json'))
 if args.dry_run:
     for j in jobs: print(j['name'] + ':', ' '.join(j['cmd'][2:]))
